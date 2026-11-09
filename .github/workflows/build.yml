@@ -1,0 +1,76 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      ZIG_VERSION: 0.17.1
+      ZIG_SHA256: b03f477a1943673e02aca0f570e8030dffd536ce1f45cbc4d3326ec31159562e
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zig (pinned version, hash-verified)
+        shell: pwsh
+        run: |
+          $url = "https://ziglang.org/download/$env:ZIG_VERSION/zig-x86_64-windows-$env:ZIG_VERSION.zip"
+          Invoke-WebRequest -Uri $url -OutFile zig.zip
+          $hash = (Get-FileHash zig.zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:ZIG_SHA256) { throw "zig sha256 mismatch: got $hash" }
+          Expand-Archive zig.zip -DestinationPath tools
+          Remove-Item zig.zip
+
+      - name: Build DLLs (x86 + x64)
+        shell: cmd
+        run: tools\build.cmd
+
+      - name: Smoke tests
+        shell: cmd
+        run: |
+          cd bin
+          wmtest86.exe --exports WinMailMAPI.dll
+          wmtest64.exe --exports WinMailMAPI64.dll
+          wmtest86.exe --calltest WinMailMAPI.dll
+          wmtest64.exe --calltest WinMailMAPI64.dll
+          wmtest86.exe --preview WinMailMAPI.dll
+          wmtest86.exe --sendtest WinMailMAPI.dll
+          wmtest64.exe --sendtest WinMailMAPI64.dll
+
+      - name: Package release zip
+        shell: pwsh
+        run: |
+          $stage = "dist\winmail-mapi"
+          New-Item $stage -ItemType Directory -Force | Out-Null
+          Copy-Item README.md, README.pl.md, LICENSE -Destination $stage
+          foreach ($d in "bin", "installer", "src", "tests") {
+            Copy-Item $d -Destination $stage -Recurse
+          }
+          New-Item "$stage\tools" -ItemType Directory -Force | Out-Null
+          Copy-Item tools\build.cmd -Destination "$stage\tools\build.cmd"
+          Get-ChildItem $stage -Recurse -Include *.pdb, *.lib | Remove-Item -Force
+          Compress-Archive -Path $stage -DestinationPath dist\winmail-mapi.zip -Force
+          $hash = (Get-FileHash dist\winmail-mapi.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  winmail-mapi.zip" | Out-File dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winmail-mapi
+          path: dist
+
+      - name: Publish release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/winmail-mapi.zip
+            dist/SHA256SUMS.txt

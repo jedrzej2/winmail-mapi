@@ -1,0 +1,18 @@
+* text=auto
+
+# skrypty Windows muszą zawsze mieć CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# źródła i dokumenty
+*.c text
+*.h text
+*.def text
+*.md text
+*.yml text eol=lf
+LICENSE text
+
+# binaria
+*.zip binary
+*.dll binary
+*.exe binary

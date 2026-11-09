@@ -1,0 +1,20 @@
+# build output
+bin/
+
+# zig toolchain (downloaded by build.cmd / CI)
+tools/zig-*/
+
+# debug artifacts
+*.pdb
+*.lib
+*.obj
+*.ilk
+
+# archives / local packaging
+*.zip
+dist/
+
+# IDE
+.vs/
+.vscode/
+*.user

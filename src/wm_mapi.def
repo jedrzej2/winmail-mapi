@@ -1,0 +1,17 @@
+LIBRARY WinMailMAPI
+EXPORTS
+    MAPILogon
+    MAPILogoff
+    MAPISendMail
+    MAPISendDocuments
+    MAPIFindNext
+    MAPIReadMail
+    MAPISaveMail
+    MAPIDeleteMail
+    MAPIFreeBuffer
+    MAPIAddress
+    MAPIDetails
+    MAPIResolveName
+    WmMapiGetVersion
+    WmMapiPreviewUrl
+    WmMapiDiag
